@@ -35,4 +35,3 @@ export const DOMAIN_DISPATCH: Record<
   // Build agent appends entries here per CTO-declared new_domain_tool.
   draft_policy_from_snapshot: (ctx, a) => handleDraftPolicyFromSnapshot(ctx, a),
 };
-
