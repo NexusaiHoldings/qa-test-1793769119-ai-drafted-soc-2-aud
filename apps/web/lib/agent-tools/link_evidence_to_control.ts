@@ -1,208 +1,132 @@
 import type { HandlerContext, HandlerResult } from "@nexus/identity-and-access";
-import { query } from "@repo/db";
+import { sql } from "@repo/db";
 
 type Args = {
   organization_id?: unknown;
   control_id?: unknown;
-  citation_source?: unknown;
-  citation_artifact_id?: unknown;
-  citation_finding_id?: unknown;
-  citation_arn?: unknown;
-  citation_observed_at?: unknown;
-  notes?: unknown;
-  confirmed?: unknown;
+  citation_source_type?: unknown;
+  citation_source_id?: unknown;
+  resource_arn?: unknown;
+  observed_at?: unknown;
 };
 
-type LinkEvidenceRow = {
-  id: string;
-  organization_id: string;
-  control_id: string;
-  citation_source: string;
-  citation_artifact_id: string | null;
-  citation_finding_id: string | null;
-  citation_arn: string | null;
-  citation_observed_at: string | null;
-  notes: string | null;
-  created_at: string;
-  updated_at: string;
-};
+type CitationSourceType = "artifact" | "finding";
 
-const UUID_RE =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
-function asUuid(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  const trimmed = value.trim();
-  return UUID_RE.test(trimmed) ? trimmed : null;
-}
-
-function asOptionalUuid(value: unknown): string | null {
-  if (value === null || value === undefined || value === "") return null;
-  return asUuid(value);
-}
-
-function asOptionalString(value: unknown): string | null {
-  if (value === null || value === undefined) return null;
+function asNonEmptyString(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
 }
 
-function asOptionalIso(value: unknown): string | null {
-  if (value === null || value === undefined || value === "") return null;
-  if (typeof value !== "string") return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toISOString();
+function asIsoDateTimeOrNull(value: unknown): string | null {
+  const s = asNonEmptyString(value);
+  if (!s) return null;
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
 }
 
-function asBoolean(value: unknown): boolean {
-  if (typeof value === "boolean") return value;
-  if (typeof value === "string") {
-    const v = value.trim().toLowerCase();
-    return v === "true" || v === "1" || v === "yes";
-  }
-  if (typeof value === "number") return value === 1;
-  return false;
+function normalizeCitationSourceType(value: unknown): CitationSourceType | null {
+  const s = asNonEmptyString(value)?.toLowerCase();
+  if (s === "artifact" || s === "finding") return s;
+  return null;
+}
+
+function badRequest(message: string): HandlerResult {
+  return {
+    ok: false,
+    error: {
+      code: "invalid_arguments",
+      message,
+    },
+  };
 }
 
 export async function handleLinkEvidenceToControl(
-  ctx: HandlerContext,
-  args: Args,
+  _ctx: HandlerContext,
+  args: Args
 ): Promise<HandlerResult> {
-  const organizationId = asUuid(args.organization_id);
-  const controlId = asUuid(args.control_id);
-  const citationSource = asOptionalString(args.citation_source);
-  const citationArtifactId = asOptionalUuid(args.citation_artifact_id);
-  const citationFindingId = asOptionalUuid(args.citation_finding_id);
-  const citationArn = asOptionalString(args.citation_arn);
-  const citationObservedAt = asOptionalIso(args.citation_observed_at);
-  const notes = asOptionalString(args.notes);
-  const confirmed = asBoolean(args.confirmed);
+  const organizationId = asNonEmptyString(args.organization_id);
+  const controlId = asNonEmptyString(args.control_id);
+  const citationSourceType = normalizeCitationSourceType(args.citation_source_type);
+  const citationSourceId = asNonEmptyString(args.citation_source_id);
+  const resourceArn = asNonEmptyString(args.resource_arn);
+  const observedAt = asIsoDateTimeOrNull(args.observed_at);
 
-  if (!confirmed) {
-    return {
-      ok: false,
-      error: "confirmation_required",
-      message:
-        "This mutation requires explicit confirmation. Re-run with confirmed=true.",
-    } as HandlerResult;
+  if (!organizationId) return badRequest("organization_id is required");
+  if (!controlId) return badRequest("control_id is required");
+  if (!citationSourceType) {
+    return badRequest("citation_source_type is required and must be 'artifact' or 'finding'");
   }
-
-  if (!organizationId || !controlId) {
-    return {
-      ok: false,
-      error: "invalid_arguments",
-      message: "organization_id and control_id must be valid UUIDs.",
-    } as HandlerResult;
-  }
-
-  if (!citationSource || (citationSource !== "artifact" && citationSource !== "finding")) {
-    return {
-      ok: false,
-      error: "invalid_arguments",
-      message: "citation_source must be either 'artifact' or 'finding'.",
-    } as HandlerResult;
-  }
-
-  if (citationSource === "artifact" && !citationArtifactId) {
-    return {
-      ok: false,
-      error: "invalid_arguments",
-      message: "citation_artifact_id is required when citation_source='artifact'.",
-    } as HandlerResult;
-  }
-
-  if (citationSource === "finding" && !citationFindingId) {
-    return {
-      ok: false,
-      error: "invalid_arguments",
-      message: "citation_finding_id is required when citation_source='finding'.",
-    } as HandlerResult;
-  }
-
-  if (citationSource === "artifact" && citationFindingId) {
-    return {
-      ok: false,
-      error: "invalid_arguments",
-      message: "citation_finding_id must be omitted when citation_source='artifact'.",
-    } as HandlerResult;
-  }
-
-  if (citationSource === "finding" && citationArtifactId) {
-    return {
-      ok: false,
-      error: "invalid_arguments",
-      message: "citation_artifact_id must be omitted when citation_source='finding'.",
-    } as HandlerResult;
-  }
+  if (!citationSourceId) return badRequest("citation_source_id is required");
+  if (!resourceArn) return badRequest("resource_arn is required");
+  if (!observedAt) return badRequest("observed_at is required and must be a valid datetime");
 
   try {
-    const insertSql = `
+    const rows = await sql<{
+      id: string;
+      organization_id: string;
+      control_id: string;
+      citation_source_type: string;
+      citation_source_id: string;
+      resource_arn: string;
+      observed_at: string;
+      created_at: string;
+      updated_at: string;
+    }[]>`
       INSERT INTO soc2_control_evidence_links (
         organization_id,
         control_id,
-        citation_source,
-        citation_artifact_id,
-        citation_finding_id,
-        citation_arn,
-        citation_observed_at,
-        notes,
-        created_by
+        citation_source_type,
+        citation_source_id,
+        resource_arn,
+        observed_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7::timestamptz, $8, $9)
+      VALUES (
+        ${organizationId},
+        ${controlId},
+        ${citationSourceType},
+        ${citationSourceId},
+        ${resourceArn},
+        ${observedAt}::timestamptz
+      )
       RETURNING
         id,
         organization_id,
         control_id,
-        citation_source,
-        citation_artifact_id,
-        citation_finding_id,
-        citation_arn,
-        citation_observed_at,
-        notes,
+        citation_source_type,
+        citation_source_id,
+        resource_arn,
+        observed_at,
         created_at,
         updated_at
     `;
 
-    const actorId =
-      (ctx as { actorId?: string | null }).actorId ??
-      (ctx as { userId?: string | null }).userId ??
-      null;
-
-    const rows = (await query(insertSql, [
-      organizationId,
-      controlId,
-      citationSource,
-      citationArtifactId,
-      citationFindingId,
-      citationArn,
-      citationObservedAt,
-      notes,
-      actorId,
-    ])) as LinkEvidenceRow[];
-
-    const created = rows[0] ?? null;
-    if (!created) {
+    const inserted = rows[0];
+    if (!inserted) {
       return {
         ok: false,
-        error: "insert_failed",
-        message: "Failed to create evidence link.",
-      } as HandlerResult;
+        error: {
+          code: "write_failed",
+          message: "Failed to create soc2_control_evidence_links row",
+        },
+      };
     }
 
     return {
       ok: true,
       data: {
-        link: created,
+        link: inserted,
       },
-    } as HandlerResult;
+    };
   } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown database error";
     return {
       ok: false,
-      error: "db_error",
-      message: "Unable to link evidence to control.",
-      details: error instanceof Error ? error.message : "unknown_error",
-    } as HandlerResult;
+      error: {
+        code: "db_error",
+        message,
+      },
+    };
   }
 }
