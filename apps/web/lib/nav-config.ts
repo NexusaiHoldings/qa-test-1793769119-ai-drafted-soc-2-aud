@@ -1,6 +1,9 @@
 export type NavLink = {
   label: string;
   href: string;
+  // Optional flag read by the substrate <TopNav /> to gate operator/admin-only
+  // routes behind an admin session. Absent/false on public links.
+  adminOnly?: boolean;
 };
 
 export type NavGroup = {
