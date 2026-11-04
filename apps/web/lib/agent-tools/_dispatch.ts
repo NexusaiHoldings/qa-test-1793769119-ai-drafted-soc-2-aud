@@ -25,6 +25,7 @@
 
 import type { HandlerContext, HandlerResult } from "@nexus/identity-and-access";
 import { handleDraftPolicyFromSnapshot } from "./draft_policy_from_snapshot";
+import { handleLinkEvidenceToControl } from "./link_evidence_to_control";
 
 type Args = Record<string, unknown>;
 
@@ -34,4 +35,5 @@ export const DOMAIN_DISPATCH: Record<
 > = {
   // Build agent appends entries here per CTO-declared new_domain_tool.
   draft_policy_from_snapshot: (ctx, a) => handleDraftPolicyFromSnapshot(ctx, a),
+  link_evidence_to_control: (ctx, a) => handleLinkEvidenceToControl(ctx, a),
 };
