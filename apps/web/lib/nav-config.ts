@@ -1,65 +1,101 @@
+
 /**
- * Top Navigation Configuration — substrate-topnav-001 (2026-05-24).
+ * Navigation configuration consumed by the substrate's <TopNav />.
  *
- * Substrate ships with one nav entry (Home). Each portfolio company's
- * coding pipeline extends this file via F1-001 (per CTO mvp_scope —
- * cto-prompt-nav-requirement-001) to add links to the company's
- * specific feature pages.
+ * Canonical shape — do not change:
+ *   - `primary` renders as the flat strip of top-level links.
+ *   - `groups` renders as labeled dropdown sections, each with `links`.
  *
- * The substrate's TopNav component reads PRIMARY_NAV_LINKS and renders
- * them in the order declared.
- *
- * Convention:
- *   - Always keep Home as the first entry.
- *   - Group related pages with NavGroup (admin, account, etc.).
- *   - Use relative paths (Next.js route group parens collapse out of
- *     the URL — e.g. apps/web/app/(domain)/configure/page.tsx serves
- *     at /configure).
- *   - Server-only data; no client JS bundled from this file.
+ * Entries below cover every feature page in the SOC 2 MVP scope:
+ * readiness scan, control library, policy generator, gap engine,
+ * cloud/code integrations, auditor evidence export, and the operator
+ * admin surfaces (review queue + control library management).
  */
 
-export type NavLink = {
-  /** URL path (without route-group parens). */
+export interface NavLink {
+  /** Display text rendered in the nav strip / dropdown. */
+  label: string;
+  /** App-relative URL the link points to. */
   href: string;
-  /** Visible label. */
-  label: string;
-  /** Operator/admin route — TopNav shows it only to admins. */
-  adminOnly?: boolean;
-};
+  /** Optional hint shown in dropdown menus beneath the label. */
+  description?: string;
+}
 
-export type NavGroup = {
-  /** Group label (e.g. "Account", "Admin"). */
+export interface NavGroup {
+  /** Dropdown section label (e.g. "Integrations"). */
   label: string;
-  /** Child links shown inline (flat) inside the group. */
+  /** Links rendered inside the dropdown. */
   links: NavLink[];
-};
+}
 
-export type NavConfig = {
+export interface NavConfig {
   primary: NavLink[];
   groups: NavGroup[];
-};
+}
 
-/**
- * Default substrate configuration: just Home. Agents extending this
- * file should preserve Home as the first entry and append the
- * company-specific paths AFTER it.
- *
- * Example extension by F1-001:
- *   primary: [
- *     { href: "/", label: "Home" },
- *     { href: "/configure", label: "Configure" },
- *     { href: "/shop", label: "Shop" },
- *   ],
- *   groups: [
- *     { label: "Account", links: [
- *       { href: "/account/tier", label: "Tier" },
- *       { href: "/account/reorders", label: "Reorders" },
- *     ]},
- *   ],
- */
 export const NAV_CONFIG: NavConfig = {
   primary: [
-    { href: "/", label: "Home" },
+    {
+      label: "Home",
+      href: "/",
+    },
+    {
+      label: "Readiness Scan",
+      href: "/scan",
+    },
+    {
+      label: "Controls",
+      href: "/controls",
+    },
+    {
+      label: "Policies",
+      href: "/policies",
+    },
+    {
+      label: "Gaps",
+      href: "/gaps",
+    },
   ],
-  groups: [],
+  groups: [
+    {
+      label: "Integrations",
+      links: [
+        {
+          label: "AWS",
+          href: "/connect/aws",
+          description: "Connect a read-only AWS role for evidence collection",
+        },
+        {
+          label: "GitHub",
+          href: "/integrations/github",
+          description: "Link repositories for change-management evidence",
+        },
+      ],
+    },
+    {
+      label: "Auditor",
+      links: [
+        {
+          label: "Evidence Packages",
+          href: "/export",
+          description: "Generate and download auditor-ready evidence bundles",
+        },
+      ],
+    },
+    {
+      label: "Admin",
+      links: [
+        {
+          label: "Review Queue",
+          href: "/admin/review-queue",
+          description: "Human approval gate for findings and drafted claims",
+        },
+        {
+          label: "Control Library",
+          href: "/admin/control-library",
+          description: "Manage SOC 2 control mappings and criteria",
+        },
+      ],
+    },
+  ],
 };
