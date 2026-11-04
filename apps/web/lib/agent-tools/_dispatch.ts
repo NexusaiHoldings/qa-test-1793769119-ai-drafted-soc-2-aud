@@ -24,6 +24,7 @@
  */
 
 import type { HandlerContext, HandlerResult } from "@nexus/identity-and-access";
+import { handleDraftPolicyFromSnapshot } from "./draft_policy_from_snapshot";
 
 type Args = Record<string, unknown>;
 
@@ -32,4 +33,6 @@ export const DOMAIN_DISPATCH: Record<
   (ctx: HandlerContext, args: Args) => Promise<HandlerResult>
 > = {
   // Build agent appends entries here per CTO-declared new_domain_tool.
+  draft_policy_from_snapshot: (ctx, a) => handleDraftPolicyFromSnapshot(ctx, a),
 };
+
