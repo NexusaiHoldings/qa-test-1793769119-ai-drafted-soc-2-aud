@@ -39,3 +39,4 @@ export const DOMAIN_DISPATCH: Record<
   link_evidence_to_control: (ctx, a) => handleLinkEvidenceToControl(ctx, a),
   create_remediation_items: (ctx, a) => handleCreateRemediationItems(ctx, a),
 };
+
