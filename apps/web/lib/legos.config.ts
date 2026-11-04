@@ -63,6 +63,20 @@ export const LEGOS: readonly LegoConfig[] = [
   },
   {
     "config": {
+      "tier_ladder": [
+        {
+          "name": "Audit Sprint",
+          "price_id": "price_1UXwqv6WMeYkDDIu2zXzioIx",
+          "amount": 200000,
+          "interval": "month"
+        },
+        {
+          "name": "Post-Audit Maintenance",
+          "price_id": "price_1UXwqv6WMeYkDDIuPPO8UEPi",
+          "amount": 50000,
+          "interval": "month"
+        }
+      ],
       "default_currency": "usd",
       "enable_proration": true,
       "trial_days": 0
